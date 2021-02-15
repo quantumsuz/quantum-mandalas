@@ -8,25 +8,24 @@ Code Copyright Suzanne Gildert 2021
 
 from PIL import Image, ImageDraw
 import random
-# from numpy import zeros
-# from quantum_mandalas_solver import enumeration_function
+from numpy import zeros
+from quantum_mandalas_solver import enumeration_function
 from quantum_mandalas_colorschemes import mandala_fill_colors
 from dwave.system import EmbeddingComposite, DWaveSampler
 from dimod import BinaryQuadraticModel
 
-# -- The smallest you can make the mandala output image is 200 x 200px.
-# -- Image scale multiplies the scale of both x and y coordinates in the image to
-# -- increase the resolution of the resulting mandala.
-# -- E.g. im_scale = 10 will result in a 2000 x 2000px mandala
-im_scale = 5
-im = Image.new('RGB', (200 * im_scale, 200 * im_scale), (128, 128, 128))
-draw = ImageDraw.Draw(im)
+# ---------------------------- USER SETTINGS FOR MANDALA AESTHETICS ------------------------------------- #
+# -- These are user-settings for how the final mandala bmp image will look
 
-# -- These are the user-set options for how the final bmp image will look
+# -- The smallest mandala output image allowed is 200 x 200px, im_scale = 1
+# -- Image scale multiplies the scale of both x and y to increase the resolution of the resulting mandala.
+# -- E.g. im_scale = 10 results in a 2000 x 2000px mandala
+im_scale = 5
 mandala_outline_color = (255, 255, 255)
 symmetry_lines_color = (255, 255, 255)
-# mandala_fill_colors = [(255, 78, 36), (65, 26, 150)]
 
+# -- This parameter allows you to switch between the local solver and the quantum computer
+use_QPU = False
 # -- This is the user-chosen passphrase to make their mandala unique
 passphrase = "Quantum Mandalas Rock :)"
 
@@ -42,61 +41,68 @@ elif len(passphrase) < 23:
 ascii_passphrase = [ord(c) for c in passphrase]
 
 # -------------------------------- TEST SMALL QUBO WITH ENUMERATION SOLVER  ------------------------------ #
+if not use_QPU:
+    print("Solving QUBO using local enumeration solver...")
+    # -- Hash the ascii passphrase into QUBO matrix co-efficients
+    # -- The QUBO is a 4x4 matrix like this:
+    # -- QUBO = (0 0 0 0)
+    # --        (0 0 0 0)
+    # --        (0 0 0 0)
+    # --        (0 0 0 0)
+    # -- This is a very small QUBO for testing purposes
 
-# # -- Hash the ascii passphrase into QUBO matrix co-efficients
-# # -- The QUBO is a 4x4 matrix like this:
-# # -- QUBO = (0 0 0 0)
-# # --        (0 0 0 0)
-# # --        (0 0 0 0)
-# # --        (0 0 0 0)
-# # -- This is a very small QUBO for testing purposes
-#
-# Q = zeros([4, 4])
-#
-# Q[0, 0] = ascii_passphrase[0]
-# Q[1, 1] = ascii_passphrase[1]
-# Q[2, 2] = ascii_passphrase[2]
-# Q[3, 3] = ascii_passphrase[3]
-# Q[0, 1] = ascii_passphrase[4]
-# Q[0, 2] = ascii_passphrase[5]
-# Q[0, 3] = ascii_passphrase[6]
-# Q[1, 2] = ascii_passphrase[7]
-# Q[1, 3] = ascii_passphrase[8]
-# Q[2, 3] = ascii_passphrase[9]
-#
-# # -- For very small QUBOs, use enumeration solver:
-# qubo_solution = enumeration_function(Q)
+    Q = zeros([4, 4])
+
+    Q[0, 0] = ascii_passphrase[0]
+    Q[1, 1] = ascii_passphrase[1]*-1
+    Q[2, 2] = ascii_passphrase[2]
+    Q[3, 3] = ascii_passphrase[3]*-1
+    Q[0, 1] = ascii_passphrase[4]
+    Q[0, 2] = ascii_passphrase[5]*-1
+    Q[0, 3] = ascii_passphrase[6]
+    Q[1, 2] = ascii_passphrase[7]*-1
+    Q[1, 3] = ascii_passphrase[8]
+    Q[2, 3] = ascii_passphrase[9]*-1
+
+    # -- For very small QUBOs, use enumeration solver:
+    qubo_solution_list = enumeration_function(Q)
+    qubo_solution = {'A': qubo_solution_list[0],
+                     'B': qubo_solution_list[1],
+                     'C': qubo_solution_list[2],
+                     'D': qubo_solution_list[3]
+                     }
 
 # -------------------------------- FULL-SIZE QUBO WITH D-WAVE LEAP BQM SOLVER ---------------------------- #
-# -- As the QUBOs get bigger, enumeration approach becomes impossible (exponentially many states).
-# -- Here, instead of the enumeration function, we use a call to the quantum hardware using D-Wave's Q_API.
+else:
+    print("Solving QUBO using D-Wave QPU...")
+    # -- As the QUBOs get bigger, enumeration approach becomes impossible (exponentially many states).
+    # -- Here, instead of the enumeration function, we use a call to the quantum hardware using D-Wave's Q_API.
 
-# -- Hash the ascii passphrase into QUBO matrix co-efficients in a Python dict
-Q = {('A', 'A'): ascii_passphrase[0],
-     ('B', 'B'): ascii_passphrase[1]*-1,
-     ('C', 'C'): ascii_passphrase[2],
-     ('D', 'D'): ascii_passphrase[3]*-1,
-     ('A', 'B'): ascii_passphrase[4],
-     ('A', 'C'): ascii_passphrase[5]*-1,
-     ('A', 'D'): ascii_passphrase[6],
-     ('B', 'C'): ascii_passphrase[7]*-1,
-     ('B', 'D'): ascii_passphrase[8],
-     ('C', 'D'): ascii_passphrase[9]*-1,
-     }
+    # -- Hash the ascii passphrase into QUBO matrix co-efficients in a Python dict
+    Q = {('A', 'A'): ascii_passphrase[0],
+         ('B', 'B'): ascii_passphrase[1]*-1,
+         ('C', 'C'): ascii_passphrase[2],
+         ('D', 'D'): ascii_passphrase[3]*-1,
+         ('A', 'B'): ascii_passphrase[4],
+         ('A', 'C'): ascii_passphrase[5]*-1,
+         ('A', 'D'): ascii_passphrase[6],
+         ('B', 'C'): ascii_passphrase[7]*-1,
+         ('B', 'D'): ascii_passphrase[8],
+         ('C', 'D'): ascii_passphrase[9]*-1,
+         }
 
-# Convert the problem to a BQM
-bqm = BinaryQuadraticModel.from_qubo(Q)
+    # Convert the problem to a BQM
+    bqm = BinaryQuadraticModel.from_qubo(Q)
 
-# -- Define the sampler that will be used to run the problem
-sampler = EmbeddingComposite(DWaveSampler())
+    # -- Define the sampler that will be used to run the problem
+    sampler = EmbeddingComposite(DWaveSampler())
 
-# Run the problem on the sampler and print the results
-qubo_solution = sampler.sample(bqm, num_reads=1, label='BQM from passphrase')
+    # Run the problem on the sampler and print the results
+    qubo_solution = sampler.sample(bqm, num_reads=1, label='BQM from passphrase')
+    qubo_solution = qubo_solution.first.sample
 
 # ---------------- Hash the QUBO solution back to our mandala params ----------------------------------------- #
 
-print("Solving QUBO...")
-qubo_solution = qubo_solution.first.sample
 print("qubo solution = ", qubo_solution)
 print("...............")
 
@@ -116,6 +122,10 @@ num_axis_squares_rand = 1
 # num_mirror_squares_rand = random.randint(2, 5)  # - 4 options
 
 # -------------------------------- Draw the Mandala ---------------------------------------------------------- #
+
+# - Creates a new blank canvas on which to render the mandala
+im = Image.new('RGB', (200 * im_scale, 200 * im_scale), (128, 128, 128))
+draw = ImageDraw.Draw(im)
 
 # -- These are the mandala symmetry lines
 draw.line((0, 0, 200 * im_scale, 200 * im_scale), fill=symmetry_lines_color, width=1 * im_scale)

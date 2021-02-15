@@ -1,3 +1,6 @@
+"""This config file allows you to define a custom color palette for your quantum mandala.
+Colors will be selected from the given list of RGB tuples at random."""
+
 mandala_fill_colors = [(0, 0, 0),        # black 774 - idx 0
                  (4, 36, 126),     # blue 760 - idx 1
                  (5, 187, 233),    # blue 752 - idx 2
