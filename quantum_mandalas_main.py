@@ -21,24 +21,27 @@ from dimod import BinaryQuadraticModel
 # -- Image scale multiplies the scale of both x and y to increase the resolution of the resulting mandala.
 # -- E.g. im_scale = 10 results in a 2000 x 2000px mandala
 im_scale = 5
+
+# -- A few more parameters for mandala colors
 mandala_outline_color = (255, 255, 255)
 symmetry_lines_color = (255, 255, 255)
 
 # -- This parameter allows you to switch between the local solver and the quantum computer
-use_QPU = False
+use_QPU = True
+
 # -- This is the user-chosen passphrase to make their mandala unique
-passphrase = "Quantum Mandalas Rock :)"
+special_mandala_message = "Quantum Mandalas Rock :)"
 
 # ---------------------------- Hash the passphrase to a set of numeric values ---------------------------- #
 
 # -- First we prepare the passphrase to make sure it is a fixed length
-if len(passphrase) > 23:
-    passphrase = passphrase[0:24]
-elif len(passphrase) < 23:
-    passphrase = passphrase + "3"*(24-len(passphrase))
+if len(special_mandala_message) > 23:
+    special_mandala_message = special_mandala_message[0:24]
+elif len(special_mandala_message) < 23:
+    special_mandala_message = special_mandala_message + "3" * (24 - len(special_mandala_message))
 
 # - Turn the passphrase into its numeric ascii equivalent
-ascii_passphrase = [ord(c) for c in passphrase]
+ascii_phrase = [ord(c) for c in special_mandala_message]
 
 # -------------------------------- TEST SMALL QUBO WITH ENUMERATION SOLVER  ------------------------------ #
 if not use_QPU:
@@ -53,16 +56,16 @@ if not use_QPU:
 
     Q = zeros([4, 4])
 
-    Q[0, 0] = ascii_passphrase[0]
-    Q[1, 1] = ascii_passphrase[1]*-1
-    Q[2, 2] = ascii_passphrase[2]
-    Q[3, 3] = ascii_passphrase[3]*-1
-    Q[0, 1] = ascii_passphrase[4]
-    Q[0, 2] = ascii_passphrase[5]*-1
-    Q[0, 3] = ascii_passphrase[6]
-    Q[1, 2] = ascii_passphrase[7]*-1
-    Q[1, 3] = ascii_passphrase[8]
-    Q[2, 3] = ascii_passphrase[9]*-1
+    Q[0, 0] = ascii_phrase[0]
+    Q[1, 1] = ascii_phrase[1] * -1
+    Q[2, 2] = ascii_phrase[2]
+    Q[3, 3] = ascii_phrase[3] * -1
+    Q[0, 1] = ascii_phrase[4]
+    Q[0, 2] = ascii_phrase[5] * -1
+    Q[0, 3] = ascii_phrase[6]
+    Q[1, 2] = ascii_phrase[7] * -1
+    Q[1, 3] = ascii_phrase[8]
+    Q[2, 3] = ascii_phrase[9] * -1
 
     # -- For very small QUBOs, use enumeration solver:
     qubo_solution_list = enumeration_function(Q)
@@ -79,16 +82,16 @@ else:
     # -- Here, instead of the enumeration function, we use a call to the quantum hardware using D-Wave's Q_API.
 
     # -- Hash the ascii passphrase into QUBO matrix co-efficients in a Python dict
-    Q = {('A', 'A'): ascii_passphrase[0],
-         ('B', 'B'): ascii_passphrase[1]*-1,
-         ('C', 'C'): ascii_passphrase[2],
-         ('D', 'D'): ascii_passphrase[3]*-1,
-         ('A', 'B'): ascii_passphrase[4],
-         ('A', 'C'): ascii_passphrase[5]*-1,
-         ('A', 'D'): ascii_passphrase[6],
-         ('B', 'C'): ascii_passphrase[7]*-1,
-         ('B', 'D'): ascii_passphrase[8],
-         ('C', 'D'): ascii_passphrase[9]*-1,
+    Q = {('A', 'A'): ascii_phrase[0],
+         ('B', 'B'): ascii_phrase[1] * -1,
+         ('C', 'C'): ascii_phrase[2],
+         ('D', 'D'): ascii_phrase[3] * -1,
+         ('A', 'B'): ascii_phrase[4],
+         ('A', 'C'): ascii_phrase[5] * -1,
+         ('A', 'D'): ascii_phrase[6],
+         ('B', 'C'): ascii_phrase[7] * -1,
+         ('B', 'D'): ascii_phrase[8],
+         ('C', 'D'): ascii_phrase[9] * -1,
          }
 
     # Convert the problem to a BQM
