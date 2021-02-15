@@ -47,6 +47,9 @@ ascii_passphrase = [ord(c) for c in passphrase]
 # --     (0 0 0 0)
 # - This is a very small QUBO for testing purposes
 
+# - 512 variable problem
+
+# QUBO_to_solve = zeros([512, 512])
 QUBO_to_solve = zeros([4, 4])
 Q = ascii_passphrase
 
@@ -65,6 +68,10 @@ QUBO_to_solve[2, 3] = Q[20] - Q[21] - Q[22] + Q[23]
 
 # -- Here, instead of the enumeration function, we could use a call to the quantum hardware
 # -- itself using D-Wave's Q_API.
+
+# D-Wave API token goes here:
+# leap_api_token = #API token goes here
+
 qubo_solution = enumeration_function(QUBO_to_solve)
 print("Solving QUBO...")
 print("qubo solution = ", qubo_solution)
@@ -73,10 +80,10 @@ print("...............")
 # ---------------- Hash the QUBO solution back to our mandala params ----------------------------------------- #
 
 # - The QUBO solution controls the number of circles and squares that will be generated:
-num_central_circles_rand = qubo_solution[0] * 4 + 1  # - 2 options
-num_central_squares_rand = qubo_solution[1] * 4 + 1  # - 2 options
-num_mirror_circles_rand = qubo_solution[1] * 4 + 1  # - 2 options
-num_mirror_squares_rand = qubo_solution[1] * 4 + 1  # - 2 options
+num_central_circles_rand = qubo_solution[0] + 2  # - 2 options
+num_central_squares_rand = qubo_solution[1] + 2  # - 2 options
+num_mirror_circles_rand = qubo_solution[2] + 2  # - 2 options
+num_mirror_squares_rand = qubo_solution[3] + 2  # - 2 options
 
 num_axis_circles_rand = 1
 num_axis_squares_rand = 1
