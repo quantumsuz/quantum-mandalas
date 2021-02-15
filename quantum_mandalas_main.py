@@ -8,9 +8,11 @@ Code Copyright Suzanne Gildert 2021
 
 from PIL import Image, ImageDraw
 import random
-from numpy import zeros
-from quantum_mandalas_solver import enumeration_function
+# from numpy import zeros
+# from quantum_mandalas_solver import enumeration_function
 from quantum_mandalas_colorschemes import mandala_fill_colors
+from dwave.system import EmbeddingComposite, DWaveSampler
+from dimod import BinaryQuadraticModel
 
 # -- The smallest you can make the mandala output image is 200 x 200px.
 # -- Image scale multiplies the scale of both x and y coordinates in the image to
@@ -28,7 +30,7 @@ symmetry_lines_color = (255, 255, 255)
 # -- This is the user-chosen passphrase to make their mandala unique
 passphrase = "Quantum Mandalas Rock :)"
 
-# -------------------------------- Hash the passphrase to a QUBO ----------------------------------------- #
+# ---------------------------- Hash the passphrase to a set of numeric values ---------------------------- #
 
 # -- First we prepare the passphrase to make sure it is a fixed length
 if len(passphrase) > 23:
@@ -39,51 +41,70 @@ elif len(passphrase) < 23:
 # - Turn the passphrase into its numeric ascii equivalent
 ascii_passphrase = [ord(c) for c in passphrase]
 
-# - Hash the ascii passphrase into QUBO matrix co-efficients
-# - The QUBO is a 4x4 matrix like this:
-# -- Q = (0 0 0 0)
-# --     (0 0 0 0)
-# --     (0 0 0 0)
-# --     (0 0 0 0)
-# - This is a very small QUBO for testing purposes
+# -------------------------------- TEST SMALL QUBO WITH ENUMERATION SOLVER  ------------------------------ #
 
-# - 512 variable problem
+# # -- Hash the ascii passphrase into QUBO matrix co-efficients
+# # -- The QUBO is a 4x4 matrix like this:
+# # -- QUBO = (0 0 0 0)
+# # --        (0 0 0 0)
+# # --        (0 0 0 0)
+# # --        (0 0 0 0)
+# # -- This is a very small QUBO for testing purposes
+#
+# Q = zeros([4, 4])
+#
+# Q[0, 0] = ascii_passphrase[0]
+# Q[1, 1] = ascii_passphrase[1]
+# Q[2, 2] = ascii_passphrase[2]
+# Q[3, 3] = ascii_passphrase[3]
+# Q[0, 1] = ascii_passphrase[4]
+# Q[0, 2] = ascii_passphrase[5]
+# Q[0, 3] = ascii_passphrase[6]
+# Q[1, 2] = ascii_passphrase[7]
+# Q[1, 3] = ascii_passphrase[8]
+# Q[2, 3] = ascii_passphrase[9]
+#
+# # -- For very small QUBOs, use enumeration solver:
+# qubo_solution = enumeration_function(Q)
 
-# QUBO_to_solve = zeros([512, 512])
-QUBO_to_solve = zeros([4, 4])
-Q = ascii_passphrase
+# -------------------------------- FULL-SIZE QUBO WITH D-WAVE LEAP BQM SOLVER ---------------------------- #
+# -- As the QUBOs get bigger, enumeration approach becomes impossible (exponentially many states).
+# -- Here, instead of the enumeration function, we use a call to the quantum hardware using D-Wave's Q_API.
 
-QUBO_to_solve[0, 0] = Q[1] - Q[3] + Q[5] - Q[7] + Q[9] - Q[11]
-QUBO_to_solve[1, 1] = Q[2] - Q[3] + Q[13] - Q[15] + Q[17] - Q[19]
-QUBO_to_solve[2, 2] = Q[6] - Q[7] + Q[14] - Q[15] + Q[21] - Q[23]
-QUBO_to_solve[3, 3] = Q[10] - Q[11] + Q[18] - Q[19] + Q[22] - Q[23]
-QUBO_to_solve[0, 1] = Q[0] - Q[1] - Q[2] + Q[3]
-QUBO_to_solve[0, 2] = Q[4] - Q[5] - Q[6] + Q[7]
-QUBO_to_solve[0, 3] = Q[8] - Q[9] - Q[10] + Q[11]
-QUBO_to_solve[1, 2] = Q[12] - Q[13] - Q[14] + Q[15]
-QUBO_to_solve[1, 3] = Q[16] - Q[17] - Q[18] + Q[19]
-QUBO_to_solve[2, 3] = Q[20] - Q[21] - Q[22] + Q[23]
+# -- Hash the ascii passphrase into QUBO matrix co-efficients in a Python dict
+Q = {('A', 'A'): ascii_passphrase[0],
+     ('B', 'B'): ascii_passphrase[1]*-1,
+     ('C', 'C'): ascii_passphrase[2],
+     ('D', 'D'): ascii_passphrase[3]*-1,
+     ('A', 'B'): ascii_passphrase[4],
+     ('A', 'C'): ascii_passphrase[5]*-1,
+     ('A', 'D'): ascii_passphrase[6],
+     ('B', 'C'): ascii_passphrase[7]*-1,
+     ('B', 'D'): ascii_passphrase[8],
+     ('C', 'D'): ascii_passphrase[9]*-1,
+     }
 
-# -------------------------------- Solve the QUBO ------------------------------------------------------------ #
+# Convert the problem to a BQM
+bqm = BinaryQuadraticModel.from_qubo(Q)
 
-# -- Here, instead of the enumeration function, we could use a call to the quantum hardware
-# -- itself using D-Wave's Q_API.
+# -- Define the sampler that will be used to run the problem
+sampler = EmbeddingComposite(DWaveSampler())
 
-# D-Wave API token goes here:
-# leap_api_token = #API token goes here
-
-qubo_solution = enumeration_function(QUBO_to_solve)
-print("Solving QUBO...")
-print("qubo solution = ", qubo_solution)
-print("...............")
+# Run the problem on the sampler and print the results
+qubo_solution = sampler.sample(bqm, num_reads=1, label='BQM from passphrase')
 
 # ---------------- Hash the QUBO solution back to our mandala params ----------------------------------------- #
 
+print("Solving QUBO...")
+qubo_solution = qubo_solution.first.sample
+print("qubo solution = ", qubo_solution)
+print("...............")
+
 # - The QUBO solution controls the number of circles and squares that will be generated:
-num_central_circles_rand = qubo_solution[0] + 2  # - 2 options
-num_central_squares_rand = qubo_solution[1] + 2  # - 2 options
-num_mirror_circles_rand = qubo_solution[2] + 2  # - 2 options
-num_mirror_squares_rand = qubo_solution[3] + 2  # - 2 options
+num_central_circles_rand = qubo_solution['A'] + 2  # - 2 options
+num_central_squares_rand = qubo_solution['B'] + 2  # - 2 options
+num_mirror_circles_rand = qubo_solution['C'] + 2  # - 2 options
+num_mirror_squares_rand = qubo_solution['D'] + 2  # - 2 options
 
 num_axis_circles_rand = 1
 num_axis_squares_rand = 1
@@ -102,8 +123,9 @@ draw.line((200 * im_scale, 0, 0, 200 * im_scale), fill=symmetry_lines_color, wid
 draw.line((100 * im_scale, 0, 100 * im_scale, 200 * im_scale), fill=symmetry_lines_color, width=1 * im_scale)
 draw.line((0, 100 * im_scale, 200 * im_scale, 100 * im_scale), fill=symmetry_lines_color, width=1 * im_scale)
 
-central_circle_sizes = [0]*num_central_circles_rand
-central_square_sizes = [0]*num_central_squares_rand
+# - A couple of lists to store some of the random variables so we can "redraw" the outlines later
+central_circle_sizes = [0] * num_central_circles_rand
+central_square_sizes = [0] * num_central_squares_rand
 
 # -- Create the entities that are central circles
 for i in range(num_central_circles_rand):
@@ -151,9 +173,9 @@ for _ in range(num_mirror_squares_rand):
                     mirror_square_y_coord * 10 * im_scale + mirror_square_size * 5 * im_scale),
                    fill=mirror_square_fill, outline=mandala_outline_color, width=1 * im_scale)
 
+# -- Mirror the initial octant of the pattern about the xy line in 4 different ways
 im_pixels = list(im.getdata())[0:200 * im_scale * 200 * im_scale]
 
-# -- Mirror the initial octant of the pattern about the xy line in 4 different ways
 for x in range(0, 100 * im_scale):
     for y in range(x, 100 * im_scale):
         pixel = im_pixels[x + y * 200 * im_scale]
